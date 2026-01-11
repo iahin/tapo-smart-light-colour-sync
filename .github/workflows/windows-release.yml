@@ -1,0 +1,47 @@
+name: Build Windows Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy python-dotenv tapo mss pillow pyaudio pyinstaller
+
+      - name: Run tests (syntax check)
+        run: python -m compileall tapo_sync_app.py tapo_audio.py tapo_screen_sync.py tapo_sync
+
+      - name: Build Windows exe
+        run: pyinstaller --noconfirm --clean --onefile --noconsole --name tapo-sync tapo_sync_app.py
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tapo-sync-windows
+          path: dist/tapo-sync.exe
+
+      - name: Create GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/tapo-sync.exe
